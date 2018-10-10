@@ -2,7 +2,7 @@
 
 module.exports = options => {
     return async function rbac(ctx, next) {
-        if (ctx.path.endsWith('/')) {
+        if (ctx.path.endsWith('/') && ctx.path !== '/') {
             ctx.path = ctx.path.substring(0, ctx.path.length - 1);
         }
         if (ctx.path.match(options.matchPattern) !== null && !options.escapeUrl.includes(ctx.path)) {
