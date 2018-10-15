@@ -24,19 +24,26 @@ module.exports = options => {
     };
 
     async function checkPermission(user, path, menus) {
-        let onMenu = null;
-        for (const menu of menus) {
-            if (path === menu.menu_path) {
-                onMenu = menu;
-                break;
-            }
-        }
-        if (onMenu === null) {
-            return null
-        };
         if (!user) {
             return 401;
         }
-        return user.permissions.includes(onMenu.menu_id);
+        const numberReg = /^[0-9]+$/
+        const uuidReg= /^[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12}$/; 
+        const pathArr = path.split('/');
+        if (user.permissions.includes(path) || pathArr[pathArr.length-1].match(numberReg) || pathArr[pathArr.length-1].match(uuidReg)) {
+            return true;
+        } else {
+            let onMenu = null;
+            for (const menu of menus) {
+                if (path === menu.menu_path) {
+                    onMenu = menu;
+                    break;
+                }
+            }
+            if (onMenu === null) {
+                return null
+            };
+            return user.permissions.includes(onMenu.menu_id);
+        }
     }
 };
