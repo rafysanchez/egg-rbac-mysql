@@ -30,7 +30,10 @@ module.exports = options => {
         const numberReg = /^[0-9]+$/
         const uuidReg= /^[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12}$/; 
         const pathArr = path.split('/');
-        if (user.permissions.includes(path) || pathArr[pathArr.length-1].match(numberReg) || pathArr[pathArr.length-1].match(uuidReg)) {
+        if (pathArr[pathArr.length-1].match(numberReg) || pathArr[pathArr.length-1].match(uuidReg)){
+            path = path.substring(0, path.lastIndexOf('/') + 1)+'$';
+        }
+        if (user.permissions.includes(path)){
             return true;
         } else {
             let onMenu = null;
