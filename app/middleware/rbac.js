@@ -3,7 +3,7 @@
 module.exports = options => {
     return async function rbac(ctx, next) {
         if (ctx.path.endsWith('/') && ctx.path !== '/') {
-            ctx.path = ctx.path.substring(0, ctx.path.length - 1);
+            ctx.path = ctx.path.slice(0, -1);
         }
         if (ctx.path.match(options.matchPattern) !== null && !options.escapeUrl.includes(ctx.path)) {
             const result = await checkPermission(ctx.session.user, ctx.path, ctx.app.liteMenu)
