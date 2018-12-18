@@ -11,6 +11,8 @@ module.exports = options => {
             if (typeof result === 'number') {
                 ctx.status = result;
                 await next();
+            } else if (typeof result === 'boolean' && result) {
+                await next();
             } else {
                 ctx.locals.onMenu = result;
                 await next();
@@ -38,7 +40,9 @@ module.exports = options => {
 
         for (const item of fullMO) {
             if (tmp_path === item.path && userMO.includes(item.id)) {
-                if (typeof item.type === 'undefined' || item.type === 2) {
+                if (typeof item.type === 'undefined') {
+                    return true;
+                } else if (item.type === 2) {
                     return {
                         id: item.parent_id.split(',')[2],
                         hid: item.parent_id.split(',')[1],
