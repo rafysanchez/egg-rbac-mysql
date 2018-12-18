@@ -2,51 +2,54 @@
 
 module.exports = options => {
     return async function rbac(ctx, next) {
+        ctx.locals.menus = ctx.app.collapseMenus;
         if (ctx.path.endsWith('/') && ctx.path !== '/') {
             ctx.path = ctx.path.slice(0, -1);
         }
         if (ctx.path.match(options.matchPattern) !== null && !options.escapeUrl.includes(ctx.path)) {
-            const result = await checkPermission(ctx.session.user, ctx.path, ctx.app.liteMenu)
-            if (result === null) {
-                ctx.status = 404;
-            } else if (result === 401) {
-                // ctx.status = 401;
-                await next();
-            } else if (result) {
+            const result = await checkPermission(ctx.session.user, ctx.path, ctx.app.permissions, ctx.app.menus.concat(ctx.app.operations));
+            if (typeof result === 'number') {
+                ctx.status = result;
                 await next();
             } else {
-                ctx.status = 200;
-                return await ctx.render(options.errorPage, options.errorMessage);
+                ctx.locals.onMenu = result;
+                await next();
             }
         } else {
             await next();
         }
     };
 
-    async function checkPermission(user, path, menus) {
+    async function checkPermission(user, path, permissions, fullMO) {
         if (!user) {
             return 401;
         }
-        const numberReg = /^[0-9]+$/
-        const uuidReg= /^[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12}$/; 
-        const pathArr = path.split('/');
-        if (pathArr[pathArr.length-1].match(numberReg) || pathArr[pathArr.length-1].match(uuidReg)){
-            path = path.substring(0, path.lastIndexOf('/') + 1)+'$';
+
+        const uuidReg = /[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12}/;
+        const tmp_path = path.replace(uuidReg, '$');
+
+        let userMO = [];
+        for (const role of user.roles) {
+            userMO = userMO.concat(permissions[role].menu);
+            userMO = userMO.concat(permissions[role].operation);
         }
-        if (user.permissions.includes(path)){
-            return true;
-        } else {
-            let onMenu = null;
-            for (const menu of menus) {
-                if (path === menu.menu_path) {
-                    onMenu = menu;
-                    break;
+        userMO = Array.from(new Set(userMO));
+        user.permissions = userMO;
+
+        for (const item of fullMO) {
+            if (tmp_path === item.path && userMO.includes(item.id)) {
+                if (typeof item.type === 'undefined' || item.type === 2) {
+                    return {
+                        id: item.parent_id.split(',')[2],
+                        hid: item.parent_id.split(',')[1],
+                    };
                 }
+                return {
+                    id: item.id,
+                    hid: item.parent_id === '-1' ? item.id : item.parent_id.split(',')[1],
+                };
             }
-            if (onMenu === null) {
-                return null
-            };
-            return user.permissions.includes(onMenu.menu_id);
         }
+        return 403;
     }
 };
