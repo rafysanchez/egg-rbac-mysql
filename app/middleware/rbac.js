@@ -10,7 +10,6 @@ module.exports = options => {
             const result = await checkPermission(ctx.session.user, ctx.path, ctx.app.permissions, ctx.app.menus.concat(ctx.app.operations));
             if (typeof result === 'number') {
                 ctx.status = result;
-                await next();
             } else if (typeof result === 'boolean' && result) {
                 await next();
             } else {
@@ -38,22 +37,49 @@ module.exports = options => {
         userMO = Array.from(new Set(userMO));
         user.permissions = userMO;
 
+        // for (const item of fullMO) {
+        //   if (tmp_path === item.path && userMO.includes(item.id)) {
+        //     if (typeof item.type === 'undefined') {
+        //       return true;
+        //     } else if (item.type === 2) {
+        //       return {
+        //         id: item.parent_id.split(',')[2],
+        //         hid: item.parent_id.split(',')[1],
+        //       };
+        //     }
+        //     return {
+        //       id: item.id,
+        //       hid: item.parent_id === '-1' ? item.id : item.parent_id.split(',')[1],
+        //     };
+        //   }
+        // }
+
+        let exsitMO = null;
         for (const item of fullMO) {
-            if (tmp_path === item.path && userMO.includes(item.id)) {
-                if (typeof item.type === 'undefined') {
-                    return true;
-                } else if (item.type === 2) {
-                    return {
-                        id: item.parent_id.split(',')[2],
-                        hid: item.parent_id.split(',')[1],
-                    };
-                }
-                return {
-                    id: item.id,
-                    hid: item.parent_id === '-1' ? item.id : item.parent_id.split(',')[1],
-                };
+            if (tmp_path === item.path) {
+                exsitMO = item;
+                break;
             }
         }
+        if (exsitMO === null) {
+            return 404;
+        }
+
+        if (userMO.includes(exsitMO.id)) {
+            if (typeof exsitMO.type === 'undefined') {
+                return true;
+            } else if (exsitMO.type === 2) {
+                return {
+                    id: exsitMO.parent_id.split(',')[2],
+                    hid: exsitMO.parent_id.split(',')[1],
+                };
+            }
+            return {
+                id: exsitMO.id,
+                hid: exsitMO.parent_id === '-1' ? exsitMO.id : exsitMO.parent_id.split(',')[1],
+            };
+        }
+
         return 403;
     }
 };
