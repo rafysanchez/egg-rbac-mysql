@@ -1,15 +1,39 @@
 'use strict';
-
+/**
+ * 相当于在egg.onerror前面封了一层
+ * 是对数据库的权限判断，与egg.onerror不冲突
+ * @param {*} options matchPattern, escapeUrl, homePage, errorPage
+ * @returns
+ */
 module.exports = options => {
     return async function rbac(ctx, next) {
         ctx.locals.menus = ctx.app.collapseMenus;
         if (ctx.path.endsWith('/') && ctx.path !== '/') {
             ctx.path = ctx.path.slice(0, -1);
         }
+        if (typeof options.homePage !== 'undefined') {
+            options.escapeUrl.push(options.homePage);
+        }
+        if (typeof options.errorPage !== 'undefined') {
+            options.escapeUrl.push(options.errorPage);
+        }
         if (ctx.path.match(options.matchPattern) !== null && !options.escapeUrl.includes(ctx.path)) {
             const result = await checkPermission(ctx.session.user, ctx.path, ctx.app.permissions, ctx.app.menus.concat(ctx.app.operations));
             if (typeof result === 'number') {
-                ctx.status = result;
+                // 当用户不存在，重定向home页面
+                if (result === 401) {
+                    return ctx.redirect(options.homePage);
+                }
+                // 当用户没有权限403，或者，数据库中未配置对应权限404，渲染异常页面
+                const error = {
+                    code: result,
+                    msg: {
+                        403: '没有操作权限',
+                        404: '页面走丢了',
+                    }[result],
+                };
+                ctx.status = 200;
+                return await ctx.render(options.errorPage, { error });
             } else if (typeof result === 'boolean' && result) {
                 await next();
             } else {
@@ -36,23 +60,6 @@ module.exports = options => {
         }
         userMO = Array.from(new Set(userMO));
         user.permissions = userMO;
-
-        // for (const item of fullMO) {
-        //   if (tmp_path === item.path && userMO.includes(item.id)) {
-        //     if (typeof item.type === 'undefined') {
-        //       return true;
-        //     } else if (item.type === 2) {
-        //       return {
-        //         id: item.parent_id.split(',')[2],
-        //         hid: item.parent_id.split(',')[1],
-        //       };
-        //     }
-        //     return {
-        //       id: item.id,
-        //       hid: item.parent_id === '-1' ? item.id : item.parent_id.split(',')[1],
-        //     };
-        //   }
-        // }
 
         let exsitMO = null;
         for (const item of fullMO) {
